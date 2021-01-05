@@ -59,6 +59,28 @@ test('successfully create a new blog post', async () => {
   expect(authors).toContain('Entrepreneur')
 })
 
+test('if likes property is missing, should default to 0', async () => {
+  const newBlog = {
+    title: 'I got up yesterday at noon, but like for today',
+    author: 'Hugh Jass',
+    url: 'Joe Mama',
+  }
+  const response = await api
+                        .post('/api/blogs')
+                        .send(newBlog)
+                        .expect(200)
+                        .expect('Content-Type', /application\/json/)
+  const returnedObj = {
+    title: response.body.title,
+    author: response.body.author,
+    url: response.body.url,
+    likes: response.body.likes
+  }
+  const updatedDB = await helper.blogsInDb()
+  expect(updatedDB).toHaveLength(helper.initialBlogs.length + 1)
+  expect(returnedObj).toEqual({...newBlog, likes: 0})
+})
+
 afterAll(() => {
   mongoose.connection.close()
 })
