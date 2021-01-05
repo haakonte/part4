@@ -30,6 +30,35 @@ test('all blogs posts are returned', async () => {
   expect(response.body).toHaveLength(helper.initialBlogs.length)
 })
 
+test('every blog post has identifier ID', async () => {
+  const response = await api.get('/api/blogs')
+  const ids = response.body.map(blog => blog.id)
+  for (id in ids) {
+    expect(id).toBeDefined()
+  }
+})
+
+test('successfully create a new blog post', async () => {
+  const newBlog = {
+    title: 'You wanna know how early i got up this morning',
+    author: 'Entrepreneur',
+    url: 'Joe Mama',
+    likes: 69
+  }
+
+  await api
+        .post('/api/blogs')
+        .send(newBlog)
+        .expect(200)
+        .expect('Content-Type', /application\/json/)
+  
+  const updatedBlogList = await helper.blogsInDb()
+  const authors = updatedBlogList.map(b => b.author)
+
+  expect(updatedBlogList).toHaveLength(helper.initialBlogs.length + 1)
+  expect(authors).toContain('Entrepreneur')
+})
+
 afterAll(() => {
   mongoose.connection.close()
 })
