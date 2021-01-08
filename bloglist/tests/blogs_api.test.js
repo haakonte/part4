@@ -4,21 +4,24 @@ const app = require('../app')
 const helper = require('./test_helper_api')
 const api = supertest(app)
 const Blog = require('../models/blog')
+const User = require('../models/user')
+const bcrypt = require('bcrypt')
 
 
 
-beforeEach(async () => {
-  await Blog.deleteMany({})
-  console.log('cleared')
-
-  const noteObjects = helper.initialBlogs
-  .map(blog => new Blog(blog))
-  const promiseArr = noteObjects.map(blogObj => blogObj.save())
-  await Promise.all(promiseArr)
-
-})
 
 describe('initial notes in db', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({})
+    console.log('cleared')
+  
+    const noteObjects = helper.initialBlogs
+    .map(blog => new Blog(blog))
+    const promiseArr = noteObjects.map(blogObj => blogObj.save())
+    await Promise.all(promiseArr)
+  
+  })
+  
   test('blog posts are returned as json', async () => {
     await api
           .get('/api/blogs')
@@ -42,6 +45,17 @@ describe('initial notes in db', () => {
 
 
 describe('adding a blog post', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({})
+    console.log('cleared')
+  
+    const noteObjects = helper.initialBlogs
+    .map(blog => new Blog(blog))
+    const promiseArr = noteObjects.map(blogObj => blogObj.save())
+    await Promise.all(promiseArr)
+  
+  })
+  
   test('successfully create a new blog post', async () => {
     const newBlog = {
       title: 'You wanna know how early i got up this morning',
@@ -122,6 +136,17 @@ describe('adding a blog post', () => {
 })
 
 describe('deleting a blog post', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({})
+    console.log('cleared')
+  
+    const noteObjects = helper.initialBlogs
+    .map(blog => new Blog(blog))
+    const promiseArr = noteObjects.map(blogObj => blogObj.save())
+    await Promise.all(promiseArr)
+  
+  })
+  
   test('on valid id, should return status code 204 on deletion', async () => {
     const initialDbBlogs = await helper.blogsInDb()
     const blogToDelete = initialDbBlogs[0]
@@ -151,6 +176,17 @@ describe('deleting a blog post', () => {
 })
 
 describe('updating a blog post', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({})
+    console.log('cleared')
+  
+    const noteObjects = helper.initialBlogs
+    .map(blog => new Blog(blog))
+    const promiseArr = noteObjects.map(blogObj => blogObj.save())
+    await Promise.all(promiseArr)
+  
+  })
+
 
   test('updating a blog post which exists', async () => {
     const initialInDb = await helper.blogsInDb()
@@ -187,6 +223,61 @@ describe('updating a blog post', () => {
       expect(dbPreUpdate[i]).toEqual(db[i])
     }
   })
+})
+
+describe('when there is one user in userDb', () => {
+  
+  beforeEach(async () => {
+    await User.deleteMany({})
+    const passwordHash = await bcrypt.hash('hemmelig', 10)
+    const user = new User({username: 'rot', passwordHash})
+    await user.save()
+  })
+
+  test('succesful creation of new user', async () => {
+    const initialUsers = await helper.usersInDb()
+
+    const freshUser = {
+      username: 'mikeey',
+      name: 'Mike Hunt',
+      password: 'guttastemning'
+    }
+    
+    await api
+      .post('/api/users')
+      .send(freshUser)
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+    
+    const updatedUserDb = await helper.usersInDb()
+    expect(updatedUserDb).toHaveLength(initialUsers.length + 1)
+
+    const userNames = updatedUserDb.map(user => user.username)
+    expect(userNames).toContain(freshUser.username)
+  })
+
+  test('should fail when username already exists', async () => {
+    const initialUsers = await helper.usersInDb()
+    
+    const user = {
+      username: 'rot',
+      name: 'Hugh Jass',
+      password: 'yeet '
+    }
+
+    const result = await api
+      .post('/api/users')
+      .send(user)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+    
+    expect(result.body.error).toContain('`username` to be unique')
+
+    const atEndDb = await helper.usersInDb()
+    expect(atEndDb).toHaveLength(initialUsers.length)
+
+  })
+
 })
 
 
